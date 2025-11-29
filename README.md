@@ -1,43 +1,96 @@
-# Nutrition5K Calorie and Nutrient Estimator Using BLIP
+# 🍽️ BLIP-Nutrition Regression: Vision-Language Model for Estimating Food Calories and Macronutrients
 
-This repository contains code for a deep learning model that estimates the nutritional values—calories, protein, fat, and carbohydrates—from food images and their corresponding textual descriptions. The model leverages the BLIP (Bootstrapping Language-Image Pre-training) architecture by Salesforce for multi-modal feature extraction and regression.
-
----
-
-## Project Description
-
-The project aims to predict the nutritional content of food items by combining visual and textual data. Using the **Nutrition5K** dataset, which contains food images alongside cleaned captions and nutrition labels, we fine-tune the BLIP model to perform multi-output regression. The approach fuses image embeddings and text embeddings to capture both modalities for accurate nutritional value prediction.
-
-This model can support applications in personalized diet tracking, food journaling apps, and nutrition monitoring without manual calorie counting.
+This project implements a **multi-modal regression model** based on **BLIP (Bootstrapped Language-Image Pre-training)** to estimate four key nutritional values—**Calories (kcal), Protein, Fat, and Carbohydrates**—from food images and descriptive captions.
 
 ---
 
-## Features
+## 1. Project Overview 🏗️
 
-- Multi-modal input (image + text caption)
-- Normalization and denormalization of nutritional values for better regression performance
-- Fine-tuning of BLIP model's image-text embeddings
-- Modular and reusable PyTorch implementation
-- Easy-to-run training and evaluation scripts with detailed loss reporting
-- Batch processing with DataLoader and data splitting for train/test evaluation
+The project pipeline involves three main stages: **Data Ingestion**, **Preprocessing**, and **Model Training**.
+
+| Stage | Input | Process | Output |
+| :--- | :--- | :--- | :--- |
+| **Data Ingestion** | 🖼️ Images (zipped) + 📄 Captions CSV | Extract images, load captions | Raw image folders + `dish_manual_captions.csv` |
+| **Preprocessing (Phase 1)** | Raw data | Extract nutritional values (kcal, protein, fat, carbs) via regex, merge with image paths | `nutrition5k_regression_data.csv` |
+| **Preprocessing (Phase 2)** | `nutrition5k_regression_data.csv` | Clean captions by removing numeric nutrition info | `cleaned_nutrition5k.csv` |
+| **Modeling** | `cleaned_nutrition5k.csv` + Image folders | Train BLIP Regressor using MSE Loss | `blip_regressor.pth` |
 
 ---
 
-## Getting Started
+## 2. Dataset Overview 📊
 
-### Requirements
+The dataset links **food images** and **manual captions** via `dish_id` (3,490 unique dishes).
 
-- Python 3.7+
-- PyTorch
-- Transformers (HuggingFace)
-- torchvision
-- pandas
-- tqdm
-- PIL (Pillow)
+### A. Required Data 📂
 
-### Installation
+1. **Image Data**  
+   - Download and extract images folder: [Google Drive Link](https://drive.google.com/file/d/1VnLx3Odmla4rGRI0Bk-9DCjotncFX07O/view?usp=sharing)  
+   - Folder contains subfolders (e.g., `/realsense_overhead/`) with final images (`rgb.png`).  
 
-Install the dependencies via pip:
+2. **Caption Data (CSV)**  
+   - `dish_manual_captions.csv` mapping `dish_id` → `caption`.
 
-```bash
-pip install torch torchvision transformers pandas tqdm pillow
+> ⚠️ **Note:** Notebook was developed on Google Colab using Google Drive mount. For local use, no mount is needed—ensure images are extracted and paths in the CSV match your folder structure.
+
+### B. CSV Files
+
+All CSV files used and generated in the pipeline will be uploaded to the repo:
+
+- **Raw captions:** `dish_manual_captions.csv`  
+- **Merged data with nutrition labels:** `nutrition5k_regression_data.csv`  
+- **Cleaned captions for training:** `cleaned_nutrition5k.csv`  
+
+> Images are **not included in the repo** due to size; download from the Drive link above.
+
+---
+
+## 3. Data Preprocessing 🧹
+
+1. **Ground Truth Extraction & Merging**  
+   - Extract **kcal, protein, fat, carbs** from captions using regex.  
+   - Merge with corresponding image paths → `nutrition5k_regression_data.csv`.  
+
+2. **Caption Cleaning**  
+   - Remove numeric values and descriptive phrases (“It provides approximately…”)  
+   - Result: `cleaned_nutrition5k.csv` (used for model training).  
+
+3. **Label Normalization**  
+   - For the optimized model, regression targets are **z-score normalized** (mean=0, std=1) to improve training stability.  
+
+---
+
+## 4. Model Implementation 🤖
+
+This project uses a custom **BLIPRegressor** model, built on the BLIP Vision-Language architecture, for predicting four continuous nutritional values: **Calories, Protein, Fat, and Carbohydrates**. The model processes both food images and cleaned text captions, fusing their embeddings before passing them through a regression head.
+
+### Model Architecture
+
+- **Base Model:** `BlipModel` from `"Salesforce/blip-image-captioning-base"`.
+- **Input Processing:** Images and text captions are encoded by BLIP, producing separate embeddings.
+- **Fusion:** Image and text embeddings are concatenated into a single vector.
+- **Regression Head:** An MLP maps the fused embedding (size 1024) to the four nutritional outputs. It consists of:
+  - Linear layers with ReLU activations
+  - Dropout layers (0.3) for regularization
+  - Final linear layer outputs the four nutritional values
+
+### Training Versions
+
+Two versions were tested, differing in how the target labels were handled:
+
+1. **Direct (Raw) Version:**  
+   - Uses raw nutritional values as targets.  
+   - High MSE due to large numerical ranges of the targets.  
+   
+2. **Normalized Version:**  
+   - Targets are standardized using the dataset mean and standard deviation.  
+   - Training is more stable, resulting in a significantly lower MSE.  
+   - Predictions must be **denormalized** to convert back to real nutritional values.
+
+### Normalization Details
+
+- Each nutrient is standardized:  
+  \[
+  L_{\text{norm}} = \frac{L - \mu}{\sigma}
+  \]  
+  where μ and σ are the mean and standard deviation calculated from the full dataset.  
+- Denormalization is required to interpret the model’s outputs in real-world units.
