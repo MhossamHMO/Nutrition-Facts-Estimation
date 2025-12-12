@@ -24,7 +24,7 @@ The dataset links **food images** and **manual captions** via `dish_id` (3,490 u
 ### A. Required Data 📂
 
 1. **Image Data**  
-   - Download and extract images folder: [Google Drive Link]([https://drive.google.com/file/d/1VnLx3Odmla4rGRI0Bk-9DCjotncFX07O/view?usp=sharing](https://drive.google.com/file/d/18TqLtLXWZc-dnhH7jyVUZ85F7TmGmZMD/view?usp=drive_link))  
+   - Download and extract images folder: [Google Drive Link](https://drive.google.com/file/d/18TqLtLXWZc-dnhH7jyVUZ85F7TmGmZMD/view?usp=drive_link)  
    - Folder contains subfolders (e.g., `/realsense_overhead/`) with final images (`rgb.png`).  
 
 2. **Caption Data (CSV)**  
